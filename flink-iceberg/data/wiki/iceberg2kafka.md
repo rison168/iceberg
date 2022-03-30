@@ -11,7 +11,7 @@
 /root/flink-dir/original-flink-iceberg-1.0-SNAPSHOT.jar
 ``````
 
-![image-20220330133756690](pic\image-20220330133756690.png)
+![image-20220330133756690](pic/image-20220330133756690.png)
 
 #### 1.2 手动插入数据
 
@@ -32,7 +32,7 @@ sasl.mechanism=PLAIN
 {"id":"1001_NEW","name":"RISON","age":23,"sex":"男","ts":1648610308636}
 ``````
 
-![image-20220330140045148](pic\image-20220330140045148.png)
+![image-20220330140045148](pic/image-20220330140045148.png)
 
 ### 2.  kafka 操作脚本
 
@@ -51,9 +51,9 @@ sasl.mechanism=PLAIN
 --zookeeper tbds-172-16-16-91:2181,tbds-172-16-16-41:2181,tbds-172-16-16-67:2181
 ``````
 
-![image-20220330132829338](pic\image-20220330132829338.png)
+![image-20220330132829338](pic/image-20220330132829338.png)
 
-![image-20220330132913458](pic\image-20220330132913458.png)
+![image-20220330132913458](pic/image-20220330132913458.png)
 
 #### 2.2 监控消费kafka topic
 
@@ -71,7 +71,7 @@ sasl.mechanism=PLAIN
 --consumer.config /tmp/kafka_client_sasl.conf
 ``````
 
-![image-20220330135914894](pic\image-20220330135914894.png)
+![image-20220330135914894](pic/image-20220330135914894.png)
 
 
 

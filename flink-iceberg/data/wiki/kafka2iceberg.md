@@ -17,7 +17,7 @@
 /root/flink-dir/original-flink-iceberg-1.0-SNAPSHOT.jar
 ``````
 
-![image-20220330111314952](pic\image-20220330111314952.png)
+![image-20220330111314952](pic/image-20220330111314952.png)
 
 ### 3. kafka 操作脚本
 
@@ -37,7 +37,7 @@
 
 ````
 
-![image-20220330105924579](pic\image-20220330105924579.png)
+![image-20220330105924579](pic/image-20220330105924579.png)
 
 #### 3.2 手动打数据
 
@@ -55,7 +55,7 @@ sasl.mechanism=PLAIN
 --producer.config /tmp/kafka_client_sasl.conf
 ``````
 
-![image-20220330125953552](pic\image-20220330125953552.png)
+![image-20220330125953552](pic/image-20220330125953552.png)
 
 ### 4. 查看表数据
 
@@ -71,5 +71,5 @@ select * from iceberg_db.iceberg_table_kafka /*+ OPTIONS('streaming'='true', 'mo
 
 ``````
 
-![image-20220330130022404](pic\image-20220330130022404.png)
+![image-20220330130022404](pic/image-20220330130022404.png)
 
