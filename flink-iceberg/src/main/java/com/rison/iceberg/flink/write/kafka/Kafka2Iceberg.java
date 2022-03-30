@@ -1,18 +1,18 @@
-package com.rison.kafka.app;
+package com.rison.iceberg.flink.write.kafka;
 
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
-import com.rison.kafka.util.KafkaUtil;
+import com.rison.iceberg.flink.util.KafkaUtil;
 import org.apache.flink.api.common.functions.MapFunction;
 import org.apache.flink.api.common.serialization.SimpleStringSchema;
 import org.apache.flink.runtime.state.filesystem.FsStateBackend;
 import org.apache.flink.streaming.api.CheckpointingMode;
-import org.apache.flink.streaming.api.TimeCharacteristic;
 import org.apache.flink.streaming.api.datastream.SingleOutputStreamOperator;
 import org.apache.flink.streaming.api.environment.CheckpointConfig;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.connectors.kafka.FlinkKafkaConsumer;
 import org.apache.flink.table.data.GenericRowData;
+import org.apache.flink.table.data.RowData;
 import org.apache.flink.table.data.StringData;
 import org.apache.flink.table.data.TimestampData;
 import org.apache.hadoop.conf.Configuration;
@@ -25,9 +25,8 @@ import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.flink.CatalogLoader;
 import org.apache.iceberg.flink.FlinkCatalogFactory;
 import org.apache.iceberg.flink.TableLoader;
-import org.apache.flink.table.data.RowData;
-import org.apache.flink.calcite.shaded.com.google.common.collect.ImmutableMap;
 import org.apache.iceberg.flink.sink.FlinkSink;
+import org.apache.iceberg.relocated.com.google.common.collect.ImmutableMap;
 import org.apache.iceberg.types.Types;
 
 import java.io.IOException;
@@ -42,14 +41,16 @@ import java.util.Map;
  * @PROJECT_NAME: flink-iceberg
  **/
 
-public class Kafka2IcebergDemo {
+public class Kafka2Iceberg {
     private final static String ICEBERG_DEFAULT_DB = "iceberg_db";
-    private static String ICEBERG_DEFAULT_TABLE = "iceberg_default_table";
+    private static String ICEBERG_DEFAULT_TABLE = "iceberg_table_kafka";
     private static String CATALOG_WAREHOUSE_LOCATION = "hdfs:///apps/hive/warehouse";
     private static String CATALOG_URI = "thrift://tbds-172-16-16-41:9083";
     private static String CATALOG = "iceberg_catalog";
     private static String TOPIC = "kafka_iceberg_topic";
-    private static String SERVERS = "tbds-172-16-16-144:6669,tbds-172-16-16-41:6669,tbds-172-16-16-91:6669";
+    private static String KAFKA_SERVERS = "tbds-172-16-16-144:6669,tbds-172-16-16-41:6669,tbds-172-16-16-91:6669";
+    private static String KAFKA_GROUP_ID = "icebergGroup";
+    private static String CHECKPOINT_DATA_URI = "hdfs:///flink/checkpoints-data/";
 
     public static void main(String[] args) throws Exception {
         //TODO 1. set flink env and set checkpoint
@@ -63,14 +64,14 @@ public class Kafka2IcebergDemo {
         checkpointConfig.setCheckpointTimeout(60_1000L);
         checkpointConfig.setMaxConcurrentCheckpoints(1);
         checkpointConfig.enableExternalizedCheckpoints(CheckpointConfig.ExternalizedCheckpointCleanup.RETAIN_ON_CANCELLATION);
-        env.setStateBackend(new FsStateBackend("hdfs:///flink/checkpoints-data/"));
+        env.setStateBackend(new FsStateBackend(CHECKPOINT_DATA_URI));
         env.getConfig().setAutoWatermarkInterval(5000L);
         env.setParallelism(1);
 
         //TODO 2. consume kafka data
         FlinkKafkaConsumer<String> kafkaConsumer = new FlinkKafkaConsumer<>(TOPIC,
                 new SimpleStringSchema(),
-                KafkaUtil.consumerProps(SERVERS, "icebergGroup")
+                KafkaUtil.consumerProps(KAFKA_SERVERS, KAFKA_GROUP_ID)
         );
         SingleOutputStreamOperator<RowData> kafkaStream = env.addSource(kafkaConsumer).map(
                 new MapFunction<String, RowData>() {
@@ -92,7 +93,7 @@ public class Kafka2IcebergDemo {
         kafkaStream.uid("icebergGroup");
 
         //TODO 3. create iceberg table
-        TableIdentifier identifier = TableIdentifier.of(Namespace.of(ICEBERG_DEFAULT_DB), "iceberg_table_kafka");
+        TableIdentifier identifier = TableIdentifier.of(Namespace.of(ICEBERG_DEFAULT_DB), ICEBERG_DEFAULT_TABLE);
         Schema schema = new Schema(
                 Types.NestedField.required(1, "id", Types.StringType.get()),
                 Types.NestedField.required(2, "name", Types.StringType.get()),
@@ -160,3 +161,9 @@ public class Kafka2IcebergDemo {
         return conf;
     }
 }
+/*
+# kafka json 数据样例
+{"id":"1001","name":"RISON","age":23,"sex":"男","ts":1648091091}
+{"id":"1002","name":"ZHANGSAN","age":26,"sex":"男","ts":1648092091}
+{"id":"1003","name":"WANGFANG","age":29,"sex":"女","ts":1648093091}
+ */

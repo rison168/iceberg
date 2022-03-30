@@ -34,6 +34,9 @@
             </snapshots>
         </pluginRepository>
     </pluginRepositories>
+    <properties>
+       <fastjson.version>1.2.75</fastjson.version>
+    </properties>
     <dependencies>
         <dependency>
             <groupId>org.apache.iceberg</groupId>
@@ -52,7 +55,7 @@
         </dependency>
         <dependency>
             <groupId>org.apache.flink</groupId>
-            <artifactId>flink-table-runtime-blink_2.12</artifactId>
+            <artifactId>flink-table-runtime-blink_${scala.biniry.version}</artifactId>
             <version>${flink.version}</version>
         </dependency>
         <dependency>
@@ -69,6 +72,21 @@
                     <artifactId>jetty-runner</artifactId>
                 </exclusion>
             </exclusions>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.flink</groupId>
+            <artifactId>flink-connector-kafka_${scala.biniry.version}</artifactId>
+            <version>${flink.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.flink</groupId>
+            <artifactId>flink-sql-connector-kafka_${scala.biniry.version}</artifactId>
+            <version>${flink.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.alibaba</groupId>
+            <artifactId>fastjson</artifactId>
+            <version>${fastjson.version}</version>
         </dependency>
     </dependencies>
     <build>

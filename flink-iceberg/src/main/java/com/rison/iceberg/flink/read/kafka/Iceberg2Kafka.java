@@ -1,10 +1,9 @@
-package com.rison.kafka.app;
+package com.rison.iceberg.flink.read.kafka;
 
-import com.rison.kafka.util.KafkaUtil;
 import com.alibaba.fastjson.JSONObject;
+import com.rison.iceberg.flink.util.KafkaUtil;
 import org.apache.flink.api.common.functions.MapFunction;
 import org.apache.flink.api.common.serialization.SimpleStringSchema;
-import org.apache.flink.kafka.shaded.org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.flink.runtime.state.filesystem.FsStateBackend;
 import org.apache.flink.streaming.api.CheckpointingMode;
 import org.apache.flink.streaming.api.datastream.DataStream;
@@ -12,12 +11,11 @@ import org.apache.flink.streaming.api.datastream.SingleOutputStreamOperator;
 import org.apache.flink.streaming.api.environment.CheckpointConfig;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.connectors.kafka.FlinkKafkaProducer;
-import org.apache.flink.streaming.connectors.kafka.KafkaSerializationSchema;
 import org.apache.flink.table.data.RowData;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.security.UserGroupInformation;
-import org.apache.iceberg.*;
+import org.apache.iceberg.CatalogProperties;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.flink.CatalogLoader;
@@ -36,14 +34,15 @@ import java.util.Map;
  * @DATE: 2022/2/9 16:09
  * @PROJECT_NAME: flink-iceberg-demo
  **/
-public class Iceberg2KafkaDemo {
+public class Iceberg2Kafka {
     private final static String ICEBERG_DEFAULT_DB = "iceberg_db";
-    private static String ICEBERG_DEFAULT_TABLE = "iceberg_default_table";
+    private static String ICEBERG_DEFAULT_TABLE = "iceberg_table_kafka";
     private static String CATALOG_WAREHOUSE_LOCATION = "hdfs:///apps/hive/warehouse";
     private static String CATALOG_URI = "thrift://tbds-172-16-16-41:9083";
     private static String CATALOG = "iceberg_catalog";
-    private static String TOPIC = "kafka_iceberg_topic";
-    private static String SERVERS = "tbds-172-16-16-144:6669,tbds-172-16-16-41:6669,tbds-172-16-16-91:6669";
+    private static String TOPIC = "iceberg_kafka_topic";
+    private static String KAFKA_SERVERS = "tbds-172-16-16-144:6669,tbds-172-16-16-41:6669,tbds-172-16-16-91:6669";
+    private static String CHECKPOINT_DATA_URI = "hdfs:///flink/checkpoints-data/";
 
     public static void main(String[] args) throws Exception {
         //TODO 1. set flink env and set checkpoint
@@ -57,12 +56,12 @@ public class Iceberg2KafkaDemo {
         checkpointConfig.setCheckpointTimeout(60_1000L);
         checkpointConfig.setMaxConcurrentCheckpoints(1);
         checkpointConfig.enableExternalizedCheckpoints(CheckpointConfig.ExternalizedCheckpointCleanup.RETAIN_ON_CANCELLATION);
-        env.setStateBackend(new FsStateBackend("hdfs:///flink/checkpoints-data/"));
+        env.setStateBackend(new FsStateBackend(CHECKPOINT_DATA_URI));
         env.getConfig().setAutoWatermarkInterval(5000L);
         env.setParallelism(1);
 
         //TODO 2. select iceberg table
-        TableIdentifier identifier = TableIdentifier.of(Namespace.of(ICEBERG_DEFAULT_DB), "iceberg_table_kafka");
+        TableIdentifier identifier = TableIdentifier.of(Namespace.of(ICEBERG_DEFAULT_DB), ICEBERG_DEFAULT_TABLE);
         CatalogLoader catalogLoader = getCatalogLoader(CATALOG);
         TableLoader tableLoader = TableLoader.fromCatalog(catalogLoader, identifier);
         DataStream<RowData> batchStream = FlinkSource
@@ -92,7 +91,7 @@ public class Iceberg2KafkaDemo {
         FlinkKafkaProducer<String> kafkaProducer = new FlinkKafkaProducer<>(
                 TOPIC,
                 new SimpleStringSchema(),
-                KafkaUtil.producerProps(SERVERS)
+                KafkaUtil.producerProps(KAFKA_SERVERS)
         );
         dataStream.addSink(kafkaProducer);
 
@@ -140,15 +139,3 @@ public class Iceberg2KafkaDemo {
     }
 
 }
-
-//class MyKafkaSerializationSchema implements KafkaSerializationSchema<String> {
-//    private String topic;
-//    public MyKafkaSerializationSchema(String topic){
-//        this.topic = topic;
-//    }
-//
-//    @Override
-//    public ProducerRecord<byte[], byte[]> serialize(String s, @Nullable Long aLong) {
-//        return new ProducerRecord<>(topic, s.getBytes(StandardCharsets.UTF_8));
-//    }
-//}
