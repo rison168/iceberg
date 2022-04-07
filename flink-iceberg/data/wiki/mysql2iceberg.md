@@ -6,7 +6,7 @@
 show variables like '%bin%';
 ```
 
-![image-20220407095238974](C:\home\rison\data\iceberg_wiki\mysql2iceberg\pic\image-20220407095238974.png)
+![image-20220407095238974](pic\image-20220407095238974.png)
 
 ## 2. 建MYSQL测试表
 
@@ -74,9 +74,9 @@ CREATE TABLE student (
  SELECT * FROM student_sink /*+ OPTIONS('streaming'='true', 'monitor-interval'='1s')*/ ;
 ```
 
-![image-20220407144925518](C:\home\rison\data\iceberg_wiki\mysql2iceberg\pic\image-20220407144925518.png)
+![image-20220407144925518](pic\image-20220407144925518.png)
 
-![image-20220407145446746](C:\home\rison\data\iceberg_wiki\mysql2iceberg\pic\image-20220407145446746.png)
+![image-20220407145446746](pic\image-20220407145446746.png)
 
 ## 4. Mysql实时插入数据，查看iceberg动态表数据变化
 
@@ -85,11 +85,11 @@ CREATE TABLE student (
  INSERT INTO student VALUES (default,"zhangsan","description3");
 ```
 
-![image-20220407145955432](C:\home\rison\data\iceberg_wiki\mysql2iceberg\pic\image-20220407145955432.png)
+![image-20220407145955432](pic\image-20220407145955432.png)
 
 查看iceberg表变化：
 
-![image-20220407150117373](C:\home\rison\data\iceberg_wiki\mysql2iceberg\pic\image-20220407150117373.png)
+![image-20220407150117373](pic\image-20220407150117373.png)
 
 ## 5. Flink 执行脚本
 
@@ -107,7 +107,7 @@ INSERT INTO student VALUES (default,"数据1","description_数据1");
 INSERT INTO student VALUES (default,"数据2","description_数据2");
 ```
 
-![image-20220407172137741](C:\home\rison\data\iceberg_wiki\mysql2iceberg\pic\image-20220407172137741.png)
+![image-20220407172137741](pic\image-20220407172137741.png)
 
 ## 7. Flink client 查看数据变化
 
@@ -123,4 +123,4 @@ INSERT INTO student VALUES (default,"数据2","description_数据2");
  SELECT * FROM student_sink /*+ OPTIONS('streaming'='true', 'monitor-interval'='1s')*/ ;
 ```
 
-![image-20220407172240661](C:\home\rison\data\iceberg_wiki\mysql2iceberg\pic\image-20220407172240661.png)
+![image-20220407172240661](pic\image-20220407172240661.png)
