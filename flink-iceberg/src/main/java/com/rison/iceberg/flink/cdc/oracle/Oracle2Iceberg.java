@@ -1,4 +1,4 @@
-package com.rison.iceberg.flink.cdc.mysql;
+package com.rison.iceberg.flink.cdc.oracle;
 
 import org.apache.flink.runtime.state.filesystem.FsStateBackend;
 import org.apache.flink.streaming.api.CheckpointingMode;
@@ -17,7 +17,7 @@ import org.apache.flink.table.api.bridge.java.StreamTableEnvironment;
  * @DATE: 2022/3/30 14:36
  * @PROJECT_NAME: iceberg
  **/
-public class Mysql2Iceberg {
+public class Oracle2Iceberg {
     private static String CHECKPOINT_DATA_URI = "hdfs:///flink/checkpoints-data/";
     private static String CATALOG_WAREHOUSE_LOCATION = "hdfs:///apps/hive/warehouse";
     private static String CATALOG_URI = "thrift://tbds-172-16-16-41:9083";
@@ -38,24 +38,28 @@ public class Mysql2Iceberg {
         env.setStateBackend(new FsStateBackend(CHECKPOINT_DATA_URI));
         env.getConfig().setAutoWatermarkInterval(5000L);
         env.setParallelism(1);
-        // 创建表，connector使用mysql-cdc
-        String mysqlCDCSQL = "CREATE TABLE student (\n" +
-                "     id INT,\n" +
-                "     name STRING,\n" +
-                "     description STRING,\n" +
-                "     PRIMARY KEY (id) NOT ENFORCED\n" +
-                "   ) WITH (\n" +
-                "     'connector' = 'mysql-cdc',\n" +
-                "     'hostname' = 'tbds-172-16-16-142',\n" +
-                "     'port' = '3306',\n" +
-                "     'username' = 'root',\n" +
-                "     'password' = 'portal@Tbds.com',\n" +
-                "     'scan.startup.mode'='latest-offset',\n" +
-                "     'database-name' = 'rison_db',\n" +
-                "     'table-name' = 'student'\n" +
-                "   )";
-        TableResult tableResult = tableEnv.executeSql(mysqlCDCSQL);
-        Table sourceTable = tableEnv.sqlQuery("select * from student");
+        // 创建表，connector使用oracle-cdc
+        String oracleCDCSQL = "CREATE TABLE oracle_source_tbl(\n" +
+                "ID STRING,\n" +
+                "NAME STRING,\n" +
+                "DESCRIPTION STRING,\n" +
+                "PRIMARY KEY(ID) NOT ENFORCED \n" +
+                ") WITH (\n" +
+                "'connector' = 'oracle-cdc',\n" +
+                "'hostname' = '172.16.16.67',\n" +
+                "'port' = '1521',\n" +
+                "'username' = 'flinkuser',\n" +
+                "'password' = 'flinkpw',\n" +
+                "'database-name' = 'xe',\n" +
+                "'schema-name' = 'flinkuser',\n" +
+                "'debezium.log.mining.continuous.mine' = 'true',\n" +
+                "'debezium.log.mining.strategy' = 'online_catalog',\n" +
+                "'table-name' = 'oracle_source_tbl',\n" +
+                "'scan.startup.mode'='latest-offset',\n" +
+                "'debezium.database.tablename.case.insensitive'='false'\n" +
+                ")";
+        TableResult tableResult = tableEnv.executeSql(oracleCDCSQL);
+        Table sourceTable = tableEnv.sqlQuery("select * from oracle_source_tbl");
 
         //创建iceberg_catalog
         String catalogSQL = "CREATE CATALOG iceberg_catalog WITH (\n" +
@@ -70,11 +74,11 @@ public class Mysql2Iceberg {
         tableEnv.executeSql("use catalog iceberg_catalog");
         tableEnv.executeSql("use iceberg_db");
 
-        String icebergCDCSQL = " CREATE TABLE if not exists student_sink (\n" +
-                " id int,\n" +
-                " name STRING,\n" +
-                " description STRING,\n" +
-                " PRIMARY KEY (id) NOT ENFORCED\n" +
+        String icebergCDCSQL = " CREATE TABLE if not exists iceberg_oracle_sink (\n" +
+                " ID STRING,\n" +
+                " NAME STRING,\n" +
+                " DESCRIPTION STRING,\n" +
+                " PRIMARY KEY (ID) NOT ENFORCED\n" +
                 " ) WITH (\n" +
                 " 'catalog-name'='iceberg_catalog',\n" +
                 " 'catalog-type'='hive',  \n" +
@@ -86,6 +90,7 @@ public class Mysql2Iceberg {
         tableEnv.executeSql(icebergCDCSQL);
 
         // 将CDC数据源和下游数据表对接起来
-        tableEnv.executeSql("INSERT INTO student_sink SELECT * FROM " + sourceTable);
+        tableEnv.executeSql("INSERT INTO iceberg_oracle_sink SELECT * FROM " + sourceTable);
+
     }
 }
