@@ -68,7 +68,9 @@ public class Mysql2Kafka {
                 "  'properties.sasl.jaas.config' = 'org.apache.flink.kafka.shaded.org.apache.kafka.common.security.scram.ScramLoginModule required username=\"kafka\" password=\"kafka@Tbds.com\";', \n" +
                 "  'sink.partitioner' = 'round-robin',\n" +
                 "  'value.format' = 'debezium-json', \n" +
-                "  'value.debezium-json.ignore-parse-errors'='true' \n" +
+                "  'value.debezium-json.ignore-parse-errors'='true'\n" +
+//                "  'value.debezium-json.timestamp-format.standard'='SQL',\n" +
+//                "  'value.debezium-json.schema-include'='true'  \n" +
                 ")";
         tableEnv.executeSql(kafkaTableSQL);
 

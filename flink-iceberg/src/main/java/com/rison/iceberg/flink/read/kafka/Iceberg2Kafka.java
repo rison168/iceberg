@@ -49,7 +49,7 @@ public class Iceberg2Kafka {
         StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
         CheckpointConfig checkpointConfig = env.getCheckpointConfig();
         checkpointConfig.setCheckpointingMode(CheckpointingMode.EXACTLY_ONCE);
-        //为了验证，这里设置了1分钟
+        //为了验证，这里设置了1秒钟
         checkpointConfig.setCheckpointInterval(1_000L);
         checkpointConfig.setMinPauseBetweenCheckpoints(1_1000L);
         checkpointConfig.setTolerableCheckpointFailureNumber(3);
