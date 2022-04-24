@@ -21,5 +21,6 @@ public class TestHashMap {
         Map result = new CaseInsensitiveMap();
         result.put("lixiao", "lixiao-caseInsesitve");
         System.out.println(result.get("lixiAo"));
+        System.out.println(result.get("lixiAo1"));
     }
 }

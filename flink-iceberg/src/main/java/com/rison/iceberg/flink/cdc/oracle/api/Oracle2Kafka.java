@@ -43,8 +43,8 @@ public class Oracle2Kafka {
         env.setParallelism(1);
         //TODO 2. source oracle-cdc
         Properties properties = new Properties();
-        properties.put("value.debezium-json.schema-include", "true");
-        properties.put("value.debezium-json.timestamp-format.standard", "SQL");
+//        properties.put("value.debezium-json.schema-include", "true");
+//        properties.put("value.debezium-json.timestamp-format.standard", "SQL");
 
         SourceFunction<String> sourceFunction = OracleSource.<String>builder()
                 .hostname("172.16.16.67")
