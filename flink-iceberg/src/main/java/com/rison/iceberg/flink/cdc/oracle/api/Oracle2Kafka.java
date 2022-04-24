@@ -13,6 +13,8 @@ import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.api.functions.source.SourceFunction;
 import org.apache.flink.streaming.connectors.kafka.FlinkKafkaProducer;
 
+import java.util.Properties;
+
 
 /**
  * @PACKAGE_NAME: com.rison.iceberg.flink.cdc.oracle.api
@@ -40,6 +42,10 @@ public class Oracle2Kafka {
         env.getConfig().setAutoWatermarkInterval(5000L);
         env.setParallelism(1);
         //TODO 2. source oracle-cdc
+        Properties properties = new Properties();
+        properties.put("value.debezium-json.schema-include", "true");
+        properties.put("value.debezium-json.timestamp-format.standard", "SQL");
+
         SourceFunction<String> sourceFunction = OracleSource.<String>builder()
                 .hostname("172.16.16.67")
                 .port(1521)
@@ -48,7 +54,8 @@ public class Oracle2Kafka {
                 .tableList("flinkuser.oracle_source_tbl", "flinkuser.oracle_source_tbl_copy")
                 .username("flinkuser")
                 .password("flinkpw")
-                .startupOptions(StartupOptions.latest())
+                .startupOptions(StartupOptions.initial())
+                .debeziumProperties(properties)
                 .deserializer(new JsonDebeziumDeserializationSchema())
                 .build();
 
@@ -75,5 +82,4 @@ public class Oracle2Kafka {
  {"before":{"ID":"4007","NAME":"ZHANGSAN","DESCRIPTION":"ZHANG_DES"},"after":{"ID":"4007","NAME":"update-name","DESCRIPTION":"ZHANG_DES"},"source":{"version":"1.5.4.Final","connector":"oracle","name":"oracle_logminer","ts_ms":1650598175000,"snapshot":"false","db":"XE","sequence":null,"schema":"FLINKUSER","table":"ORACLE_SOURCE_TBL","txId":"04001a009f060000","scn":"3705954","commit_scn":"3638537","lcr_position":null},"op":"u","ts_ms":1650598213272,"transaction":null}
  {"before":{"ID":"4007","NAME":"ZHANGSAN","DESCRIPTION":"ZHANG_DES"},"after":{"ID":"4007","NAME":"update-name","DESCRIPTION":"ZHANG_DES"},"source":{"version":"1.5.4.Final","connector":"oracle","name":"oracle_logminer","ts_ms":1650598175000,"snapshot":"false","db":"XE","sequence":null,"schema":"FLINKUSER","table":"ORACLE_SOURCE_TBL_COPY","txId":"04001a009f060000","scn":"3711005","commit_scn":"3723778","lcr_position":null},"op":"u","ts_ms":1650598213272,"transaction":null}
  {"before":{"ID":"4007","NAME":"update-name","DESCRIPTION":"ZHANG_DES"},"after":null,"source":{"version":"1.5.4.Final","connector":"oracle","name":"oracle_logminer","ts_ms":1650598329000,"snapshot":"false","db":"XE","sequence":null,"schema":"FLINKUSER","table":"ORACLE_SOURCE_TBL_COPY","txId":"04000500cb060000","scn":"3809927","commit_scn":"3811904","lcr_position":null},"op":"d","ts_ms":1650598366611,"transaction":null}
-
  */

@@ -70,7 +70,7 @@ create table rison_iceberg_db.ods_vip_level(
 ) using iceberg
  partitioned by(dn);
 
-create table ods_p_center_mem_pay_money(
+create table rison_iceberg_db.ods_p_center_mem_pay_money(
     uid      string,
     paymoney string,
     siteid   string,
