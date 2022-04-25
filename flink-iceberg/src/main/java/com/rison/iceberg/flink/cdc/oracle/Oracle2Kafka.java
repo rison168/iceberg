@@ -44,7 +44,7 @@ public class Oracle2Kafka {
                 "PRIMARY KEY(ID) NOT ENFORCED \n" +
                 ") WITH (\n" +
                 "'connector' = 'oracle-cdc',\n" +
-                "'hostname' = '172.16.16.67',\n" +
+                "'hostname' = '10.1.0.97',\n" +
                 "'port' = '1521',\n" +
                 "'username' = 'flinkuser',\n" +
                 "'password' = 'flinkpw',\n" +

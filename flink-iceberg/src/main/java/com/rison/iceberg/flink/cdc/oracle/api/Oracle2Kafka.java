@@ -24,7 +24,7 @@ import java.util.Properties;
  * @PROJECT_NAME: iceberg
  **/
 public class Oracle2Kafka {
-    private static String CHECKPOINT_DATA_URI = "hdfs:///flink/checkpoints-data/";
+    private static String CHECKPOINT_DATA_URI = "hdfs:///flink/checkpoints-data/oracle2kafka/";
     private static String TOPIC = "oracle_cdc_kafka_topic_api";
     private static String KAFKA_SERVERS = "tbds-172-16-16-144:6669,tbds-172-16-16-41:6669,tbds-172-16-16-91:6669";
     public static void main(String[] args) throws Exception {
@@ -42,20 +42,16 @@ public class Oracle2Kafka {
         env.getConfig().setAutoWatermarkInterval(5000L);
         env.setParallelism(1);
         //TODO 2. source oracle-cdc
-        Properties properties = new Properties();
-//        properties.put("value.debezium-json.schema-include", "true");
-//        properties.put("value.debezium-json.timestamp-format.standard", "SQL");
 
         SourceFunction<String> sourceFunction = OracleSource.<String>builder()
-                .hostname("172.16.16.67")
+                .hostname("10.1.0.97")
                 .port(1521)
                 .database("XE")
                 .schemaList("flinkuser")
                 .tableList("flinkuser.oracle_source_tbl", "flinkuser.oracle_source_tbl_copy")
                 .username("flinkuser")
                 .password("flinkpw")
-                .startupOptions(StartupOptions.initial())
-                .debeziumProperties(properties)
+                .startupOptions(StartupOptions.latest())
                 .deserializer(new JsonDebeziumDeserializationSchema())
                 .build();
 

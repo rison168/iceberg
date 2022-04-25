@@ -1,14 +1,11 @@
 package com.rison.iceberg.flink.cdc.oracle.api;
 
-import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
-import com.rison.iceberg.flink.util.KafkaUtil;
 import com.ververica.cdc.connectors.oracle.OracleSource;
 import com.ververica.cdc.connectors.oracle.table.StartupOptions;
 import com.ververica.cdc.debezium.JsonDebeziumDeserializationSchema;
 import org.apache.commons.collections4.map.CaseInsensitiveMap;
 import org.apache.flink.api.common.functions.MapFunction;
-import org.apache.flink.api.common.serialization.SimpleStringSchema;
 import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.api.java.utils.ParameterTool;
 import org.apache.flink.runtime.state.filesystem.FsStateBackend;
@@ -20,7 +17,6 @@ import org.apache.flink.streaming.api.environment.CheckpointConfig;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.api.functions.ProcessFunction;
 import org.apache.flink.streaming.api.functions.source.SourceFunction;
-import org.apache.flink.streaming.connectors.kafka.FlinkKafkaProducer;
 import org.apache.flink.table.data.GenericRowData;
 import org.apache.flink.table.data.RowData;
 import org.apache.flink.table.data.StringData;
@@ -60,13 +56,13 @@ public class Oracle2Iceberg {
         //TODO 0. 获取入参
         ParameterTool parameters = ParameterTool.fromArgs(args);
         String[] oracle_dbname_tablename_key_list = parameters.get("oracle_dbname_tablename_key_list", "FLINKUSER.oracle_source_tbl:ID;FLINKUSER.oracle_source_tbl_copy:ID").split(";");
-        String oracleHostName = parameters.get("oracle_hostname", "172.16.16.67");
+        String oracleHostName = parameters.get("oracle_hostname", "10.1.0.97");
         int oraclePost = Integer.parseInt(parameters.get("oracle_post", "1521"));
         String oracleDataBase = parameters.get("oracle_database", "XE");
         String[] oracleSchemaList = parameters.get("oracle_schema_list", "flinkuser").split(",");
         String oracleUserName = parameters.get("oracle_username", "flinkuser");
         String oraclePassWord = parameters.get("oracle_password", "flinkpw");
-        int checkpointInterval = Integer.parseInt(parameters.get("checkpoint_interval", "1"));
+        int checkpointInterval = Integer.parseInt(parameters.get("checkpoint_interval", "60"));
         String checkpointDataUri = parameters.get("checkpoint_data_uri", "hdfs:///flink/checkpoints-data/");
         String catalogWarehouseLocation = parameters.get("catalog_warehouse_location", "hdfs:///apps/hive/warehouse");
         String catalogUri = parameters.get("catalog_uri", "thrift://tbds-172-16-16-41:9083");
@@ -77,7 +73,7 @@ public class Oracle2Iceberg {
         StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
         CheckpointConfig checkpointConfig = env.getCheckpointConfig();
         checkpointConfig.setCheckpointingMode(CheckpointingMode.EXACTLY_ONCE);
-        checkpointConfig.setCheckpointInterval(1_000L);
+        checkpointConfig.setCheckpointInterval(checkpointInterval * 1_000L);
         checkpointConfig.setMinPauseBetweenCheckpoints(checkpointInterval * 1_1000L);
         checkpointConfig.setTolerableCheckpointFailureNumber(3);
         checkpointConfig.setCheckpointTimeout(60_1000L);
@@ -90,7 +86,7 @@ public class Oracle2Iceberg {
         Map<String, TableLoader> mapTableLoader = new CaseInsensitiveMap<String, TableLoader>();
         Map<String, String> mapPrimaryKey = new CaseInsensitiveMap<String, String>();
         //建立测输出流Map
-        Map<String, OutputTag<Tuple2<String, String>>> mapOutPutTag = new org.apache.commons.collections.map.CaseInsensitiveMap();
+        Map<String, OutputTag<Tuple2<String, String>>> mapOutPutTag = new CaseInsensitiveMap<String, OutputTag<Tuple2<String, String>>>();
         TableLoader defaultTableLoader = getTableLoad("hive_catalog", iceberg_default_db, iceberg_default_table, catalogUri, catalogWarehouseLocation);
 
         ArrayList<String> dbTableNameList = new ArrayList<>();
@@ -112,25 +108,25 @@ public class Oracle2Iceberg {
             mapOutPutTag.put(dbTableName, new OutputTag<Tuple2<String, String>>(dbTableName) {
             });
         }
+        System.out.println("=====>dbTableNameList:" + dbTableNameList.toString());
         //oracle-cdc tableList
         String[] dbTableNameArr = dbTableNameList.toArray(new String[dbTableNameList.size()]);
 
         System.out.println("设置的启动参数:"
-                + "\n\t oracle_dbname_tablename_key_list " + oracle_dbname_tablename_key_list
-                + "\n\t oracle_hostname:" + oracleHostName
-                + "\n\t oracle_post:" + oraclePost
-                + "\n\t oracle_database:" + oracleDataBase
-                + "\n\t oracle_schema_list:" + oracleSchemaList
-                + "\n\t oracle_username:" + oracleUserName
-                + "\n\t oracle_password:" + oraclePassWord
-                + "\n\t checkpoint_interval:" + checkpointInterval
-                + "\n\t checkpoint_data_uri:" + checkpointDataUri
-                + "\n\t catalog_warehouse_location:" + catalogWarehouseLocation
-                + "\n\t catalog_uri:" + catalogUri
-                + "\n\t iceberg_default_db:" + iceberg_default_db
-                + "\n\t iceberg_default_table:" + iceberg_default_table
+                + "\n\t oracle_dbname_tablename_key_list：" + Arrays.toString(oracle_dbname_tablename_key_list)
+                + "\n\t oracle_hostname: " + oracleHostName
+                + "\n\t oracle_post: " + oraclePost
+                + "\n\t oracle_database: " + oracleDataBase
+                + "\n\t oracle_schema_list: " + Arrays.toString(oracleSchemaList)
+                + "\n\t oracle_username: " + oracleUserName
+                + "\n\t oracle_password: " + oraclePassWord
+                + "\n\t checkpoint_interval: " + checkpointInterval + "秒"
+                + "\n\t checkpoint_data_uri: " + checkpointDataUri
+                + "\n\t catalog_warehouse_location: " + catalogWarehouseLocation
+                + "\n\t catalog_uri: " + catalogUri
+                + "\n\t iceberg_default_db: " + iceberg_default_db
+                + "\n\t iceberg_default_table: " + iceberg_default_table
         );
-
 
         //TODO 2. source oracle-cdc
         SourceFunction<String> sourceFunction = OracleSource.<String>builder()
@@ -141,7 +137,7 @@ public class Oracle2Iceberg {
                 .tableList(dbTableNameArr)
                 .username(oracleUserName)
                 .password(oraclePassWord)
-                .startupOptions(StartupOptions.initial())
+                .startupOptions(StartupOptions.latest())
                 .deserializer(new JsonDebeziumDeserializationSchema())
                 .build();
 
@@ -156,23 +152,26 @@ public class Oracle2Iceberg {
                 JSONObject jsonObject = JSONObject.parseObject(data);
                 JSONObject sourceObject = jsonObject.getJSONObject("source");
                 String dbTableName = sourceObject.getString("schema") + "." + sourceObject.getString("table");
-                collector.collect(new Tuple2<>(oracleDataBase, data));
+                collector.collect(new Tuple2<>(dbTableName, data));
             }
         });
 
         SingleOutputStreamOperator<Tuple2<String, String>> sideOutputDataStream = dbTableKeyDataStream.process(new ProcessFunction<Tuple2<String, String>, Tuple2<String, String>>() {
             @Override
             public void processElement(Tuple2<String, String> data, Context context, Collector<Tuple2<String, String>> collector) throws Exception {
-                OutputTag<Tuple2<String, String>> tuple2OutputTag = mapOutPutTag.get(data);
-                //如果为null,说明入参没有这个db.tablename
-                if (tuple2OutputTag != null) {
-                    context.output(tuple2OutputTag, data);
-                    return;
+                if (mapOutPutTag.containsKey(data.f0)) {
+                    if (mapOutPutTag.get(data.f0) != null) {
+                        context.output(mapOutPutTag.get(data.f0), data);
+                        return;
+                    }
                 }
                 collector.collect(data);
             }
         });
         //TODO 3. 分流，sink到不同的iceberg表
+        System.out.println("=========> mapTableLoader: " + mapTableLoader.toString());
+        System.out.println("=========> mapOutPutTag: " + mapOutPutTag.toString());
+        System.out.println("=========> mapPrimaryKeyList: " + mapPrimaryKey.toString());
         for (Map.Entry<String, TableLoader> entry : mapTableLoader.entrySet()) {
             try {
                 DataStream<Tuple2<String, String>> dbTableDataStream = sideOutputDataStream.getSideOutput(mapOutPutTag.get(entry.getKey()));
@@ -223,8 +222,10 @@ public class Oracle2Iceberg {
                                 collector.collect(jsonToRow(columns, RowKind.INSERT, currentJsonObject));
                             }
                         }
+                        System.out.println("=====> currentJsonObject:" + currentJsonObject.toString());
                     }
                 });
+                genericRowDataStream.print();
 
                 String tablePrimaryKey = mapPrimaryKey.get(entry.getKey());
 
@@ -244,7 +245,6 @@ public class Oracle2Iceberg {
                             .build();
                 }
                 System.out.println(entry.getKey() + " sink to iceberg table ok ...");
-                tableLoader.close();
             } catch (Exception e) {
                 e.printStackTrace();
                 System.out.println("[WARN] " + entry.getKey() + " sink to iceberg fail!");
@@ -358,7 +358,7 @@ public class Oracle2Iceberg {
         return TimestampData.fromEpochMillis(timestamp);
     }
 
-    public static String longTimeConvertString(long time){
+    public static String longTimeConvertString(long time) {
         SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
         String timeStr = format.format(new Date(time));
         return timeStr;
