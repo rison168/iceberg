@@ -318,29 +318,37 @@ public class Oracle2Iceberg {
         for (int columnIndex = 0; columnIndex < columns.size(); columnIndex++) {
             try {
                 Types.NestedField column = columns.get(columnIndex);
-                if (!jsonObject.containsKey(column.name())) {
+                String nameLower = column.name().toLowerCase();
+                String nameUpper = column.name().toUpperCase();
+                if (!jsonObject.containsKey(nameUpper)) {
                     //jsonObject中没这个字段值，就跳过不处理
                     continue;
                 }
                 if (Types.IntegerType.get().toString().equals(column.type().toString())) {
-                    result.setField(columnIndex, jsonObject.getIntValue(column.name()));
+                    result.setField(columnIndex, jsonObject.getIntValue(nameUpper) == 0 ? jsonObject.getIntValue(nameLower) : jsonObject.getIntValue(nameUpper));
 
                 } else if (Types.LongType.get().toString().equals(column.type().toString())) {
-                    result.setField(columnIndex, jsonObject.getLong(column.name()));
+                    result.setField(columnIndex, jsonObject.getLong(nameUpper) == null ? jsonObject.getLong(nameLower) : jsonObject.getLong(nameUpper));
 
                 } else if (Types.FloatType.get().toString().equals(column.type().toString())) {
-                    result.setField(columnIndex, Float.parseFloat(jsonObject.get(column.name()).toString()));
+                    result.setField(columnIndex, Float.parseFloat(jsonObject.get(nameUpper) == null ? jsonObject.get(nameLower).toString() : jsonObject.get(nameUpper).toString()));
 
                 } else if (Types.DoubleType.get().toString().equals(column.type().toString())) {
-                    result.setField(columnIndex, jsonObject.getDouble(column.name()));
+                    result.setField(columnIndex, jsonObject.getDouble(nameUpper) == null ? jsonObject.getDouble(nameLower) : jsonObject.getDouble(nameUpper));
 
                 } else if (Types.TimestampType.withoutZone().toString().equals(column.type().toString()) ||
                         Types.TimestampType.withZone().toString().equals(column.type().toString())) {
-                    result.setField(columnIndex, getTimeStampData(jsonObject.getString(column.name())));
+                    result.setField(columnIndex, getTimeStampData(jsonObject.getString(nameUpper) == null ? jsonObject.getString(nameLower) : jsonObject.getString(nameUpper)));
 
+                } else if (Types.BooleanType.get().toString().equals(column.type().toString())) {
+                    result.setField(columnIndex, Boolean.parseBoolean(jsonObject.get(nameUpper) == null ? jsonObject.get(nameLower).toString() : jsonObject.get(nameUpper).toString()));
+                } else if (Types.TimeType.get().toString().equals(column.type().toString())) {
+                    result.setField(columnIndex, getTimeStampData(jsonObject.getString(nameUpper) == null ? jsonObject.getString(nameLower) : jsonObject.getString(nameUpper)));
+                } else if (Types.DateType.get().toString().equals(column.type().toString())) {
+                    result.setField(columnIndex, getDateData(jsonObject.getString(nameUpper) == null ? jsonObject.getString(nameLower) : jsonObject.getString(nameUpper)));
                 } else {
                     //TODO 其它类型先全当做string处理
-                    result.setField(columnIndex, StringData.fromString(jsonObject.getString(column.name())));
+                    result.setField(columnIndex, StringData.fromString(jsonObject.getString(nameUpper) == null ? jsonObject.getString(nameLower) : jsonObject.getString(nameUpper)));
                 }
             } catch (Exception e) {
                 System.out.println(columnIndex + "to row exception:" + e.toString());
@@ -354,7 +362,7 @@ public class Oracle2Iceberg {
     public static TimestampData getTimeStampData(String timeStr) throws ParseException {
         String dateStr = timeStr.replace("T", " ");
         SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-        long timestamp = format.parse(dateStr).getTime();
+        long timestamp = format.parse(dateStr).getTime() + 28800000;
         return TimestampData.fromEpochMillis(timestamp);
     }
 
@@ -362,5 +370,12 @@ public class Oracle2Iceberg {
         SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
         String timeStr = format.format(new Date(time));
         return timeStr;
+    }
+
+    public static TimestampData getDateData(String timeStr) throws ParseException {
+        String dateStr = timeStr.replace("T", " ");
+        SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd");
+        long timestamp = format.parse(dateStr).getTime() + 28800000;
+        return TimestampData.fromEpochMillis(timestamp);
     }
 }
