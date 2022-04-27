@@ -8,6 +8,7 @@ import org.junit.Test;
 
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -65,5 +66,7 @@ public class TestHashMap {
         String id = "str";
         System.out.println(id.toUpperCase());
         System.out.println(id.toLowerCase());
+
+        System.out.println(LocalDateTime.now().toString());
     }
 }

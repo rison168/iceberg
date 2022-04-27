@@ -26,6 +26,8 @@ import org.apache.flink.util.Collector;
 import org.apache.flink.util.OutputTag;
 import org.apache.flink.util.StringUtils;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.FSDataInputStream;
+import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.iceberg.*;
@@ -37,20 +39,26 @@ import org.apache.iceberg.flink.FlinkCatalogFactory;
 import org.apache.iceberg.flink.TableLoader;
 import org.apache.iceberg.flink.sink.FlinkSink;
 import org.apache.iceberg.types.Types;
+
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.*;
 
+
+import static org.apache.iceberg.types.Types.NestedField.optional;
+
 /**
- * @PACKAGE_NAME: com.rison.iceberg.flink.cdc.oracle.api
- * @NAME: Oracle2Iceberg
+ * @PACKAGE_NAME: com.tencent.rison
+ * @NAME: OracleCDC2Iceberg
  * @USER: Rison
- * @DATE: 2022/4/24 12:55
- * @PROJECT_NAME: iceberg
+ * @DATE: 2022/4/26 9:42
+ * @PROJECT_NAME: iceberg-cdc
  **/
 public class Oracle2Iceberg {
-
     public static void main(String[] args) throws Exception {
 
         //TODO 0. 获取入参
@@ -63,11 +71,20 @@ public class Oracle2Iceberg {
         String oracleUserName = parameters.get("oracle_username", "flinkuser");
         String oraclePassWord = parameters.get("oracle_password", "flinkpw");
         int checkpointInterval = Integer.parseInt(parameters.get("checkpoint_interval", "60"));
-        String checkpointDataUri = parameters.get("checkpoint_data_uri", "hdfs:///flink/checkpoints-data/");
+        String checkpointDataUri = parameters.get("checkpoint_data_uri", "hdfs:///flink/checkpoints-data/oracle-cdc");
         String catalogWarehouseLocation = parameters.get("catalog_warehouse_location", "hdfs:///apps/hive/warehouse");
         String catalogUri = parameters.get("catalog_uri", "thrift://tbds-172-16-16-41:9083");
         String iceberg_default_db = parameters.get("iceberg_default_db", "iceberg_db");
-        String iceberg_default_table = parameters.get("iceberg_default_table", "iceberg_default_table");
+        String iceberg_default_table = parameters.get("iceberg_default_table", "iceberg_cdc_default_table");
+        String oracle_dbname_tablename_key_list_path = parameters.get("oracle_dbname_tablename_key_list_path", "false");
+
+        if (!oracle_dbname_tablename_key_list_path.equals("false")) {
+            String text = readHDFSFile(oracle_dbname_tablename_key_list_path);
+            System.out.println("hdfs:file-text >>> \n" + text);
+            oracle_dbname_tablename_key_list = text.split(";");
+        }
+        //创建默认表
+        createDefaultTableIfNotExist(iceberg_default_db, iceberg_default_table);
 
         //TODO 1. set flink env and set checkpoint
         StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
@@ -114,6 +131,7 @@ public class Oracle2Iceberg {
 
         System.out.println("设置的启动参数:"
                 + "\n\t oracle_dbname_tablename_key_list：" + Arrays.toString(oracle_dbname_tablename_key_list)
+                + "\n\t oracle_dbname_tablename_key_list_path：" + oracle_dbname_tablename_key_list_path
                 + "\n\t oracle_hostname: " + oracleHostName
                 + "\n\t oracle_post: " + oraclePost
                 + "\n\t oracle_database: " + oracleDataBase
@@ -216,7 +234,9 @@ public class Oracle2Iceberg {
                                     collector.collect(jsonToRow(columns, RowKind.UPDATE_AFTER, currentJsonObject));
                                 }
                             } else {
-                                currentJsonObject = jsonObject.getJSONObject("after");
+                                if (jsonObject.containsKey("after")) {
+                                    currentJsonObject = jsonObject.getJSONObject("after");
+                                }
                                 currentJsonObject.put("current_ts", longTimeConvertString(Long.parseLong(jsonObject.getString("ts_ms"))));
                                 currentJsonObject.put("op_ts", longTimeConvertString(Long.parseLong(jsonObject.getString("ts_ms"))));
                                 collector.collect(jsonToRow(columns, RowKind.INSERT, currentJsonObject));
@@ -256,8 +276,9 @@ public class Oracle2Iceberg {
             FlinkSink.forRowData(sideOutputDataStream.map(new MapFunction<Tuple2<String, String>, RowData>() {
                 @Override
                 public RowData map(Tuple2<String, String> data) throws Exception {
-                    GenericRowData genericRowData = new GenericRowData(1);
+                    GenericRowData genericRowData = new GenericRowData(2);
                     genericRowData.setField(0, StringData.fromString(data.f1));
+                    genericRowData.setField(1, StringData.fromString(LocalDateTime.now().toString().replace("T", " ")));
                     return genericRowData;
                 }
             }))
@@ -320,7 +341,7 @@ public class Oracle2Iceberg {
                 Types.NestedField column = columns.get(columnIndex);
                 String nameLower = column.name().toLowerCase();
                 String nameUpper = column.name().toUpperCase();
-                if (!jsonObject.containsKey(nameUpper)) {
+                if (!jsonObject.containsKey(nameUpper) && !jsonObject.containsKey(nameLower)) {
                     //jsonObject中没这个字段值，就跳过不处理
                     continue;
                 }
@@ -366,11 +387,6 @@ public class Oracle2Iceberg {
         return TimestampData.fromEpochMillis(timestamp);
     }
 
-    public static String longTimeConvertString(long time) {
-        SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-        String timeStr = format.format(new Date(time));
-        return timeStr;
-    }
 
     public static TimestampData getDateData(String timeStr) throws ParseException {
         String dateStr = timeStr.replace("T", " ");
@@ -378,4 +394,53 @@ public class Oracle2Iceberg {
         long timestamp = format.parse(dateStr).getTime() + 28800000;
         return TimestampData.fromEpochMillis(timestamp);
     }
+
+    public static String longTimeConvertString(long time) {
+        SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+        String timeStr = format.format(new Date(time));
+        return timeStr;
+    }
+
+    public static String readHDFSFile(String filePath) throws IOException {
+        Path path = new Path(filePath);
+        FileSystem fs = path.getFileSystem(getHadoopConfig());
+        if (!fs.exists(new Path(filePath))) {
+            throw new IOException("文件不存在！");
+        }
+        FSDataInputStream inputStream = fs.open(path);
+        ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+        byte[] bytes = new byte[1024];
+        int len;
+        while ((len = inputStream.read(bytes)) != -1) {
+            outputStream.write(bytes, 0, len);
+        }
+        inputStream.close();
+        byte[] strs = outputStream.toByteArray();
+        for (byte s : strs) {
+        }
+        String content = outputStream.toString().replaceAll(" ", "").replaceAll("\\n", "");
+        outputStream.close();
+        fs.close();
+        return content;
+    }
+
+    //创建默认表
+    private static Table createDefaultTableIfNotExist(String db, String tableName) throws IOException {
+        Catalog hive_catalog = CatalogLoader.hive("hive_catalog", getHadoopConfig(), new HashMap<String, String>()).loadCatalog();
+        TableIdentifier identifier = TableIdentifier.of(Namespace.of(db), tableName);
+        if (hive_catalog.tableExists(identifier)) {
+            return hive_catalog.loadTable(identifier);
+        } else {
+            Map<String, String> properties = new HashMap<>();
+            properties.put("write.metadata.previous-versions-max", "10");
+            properties.put("write.metadata.delete-after-commit.enabled", "true");
+            return hive_catalog.createTable(identifier,
+                    new Schema(
+                            optional(1, "data", Types.StringType.get()),
+                            optional(2, "ts", Types.StringType.get())
+                    ), PartitionSpec.unpartitioned(), properties);
+        }
+    }
 }
+
+
