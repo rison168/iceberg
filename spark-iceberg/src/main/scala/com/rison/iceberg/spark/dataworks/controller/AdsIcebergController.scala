@@ -1,5 +1,6 @@
 package com.rison.iceberg.spark.dataworks.controller
 
+import com.rison.iceberg.spark.dataworks.service.AdsIcebergService
 import org.apache.spark.SparkConf
 import org.apache.spark.sql.SparkSession
 
@@ -22,7 +23,7 @@ object AdsIcebergController {
       //      .setMaster("local[*]")
       .setAppName("ods_app")
     val sparkSession = SparkSession.builder().config(sparkConf).getOrCreate()
-
+    AdsIcebergService.insertAds(sparkSession, "20190722")
     sparkSession.close()
   }
 }

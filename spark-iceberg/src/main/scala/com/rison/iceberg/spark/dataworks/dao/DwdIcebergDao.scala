@@ -118,4 +118,13 @@ object DwdIcebergDao {
       .withColumn("vip_id", col("vip_id").cast("int"))
       .writeTo("spark_catalog.rison_iceberg_db.dwd_p_center_mem_pay_money").overwritePartitions()
   }
+
+  /**
+   * 查询dwd
+   * @param spark
+   * @param sql
+   */
+  def queryDwdData(spark: SparkSession, sql: String) = {
+    spark.sql(sql)
+  }
 }
