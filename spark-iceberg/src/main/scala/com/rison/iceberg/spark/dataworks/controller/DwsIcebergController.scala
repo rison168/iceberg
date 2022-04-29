@@ -1,10 +1,12 @@
 package com.rison.iceberg.spark.dataworks.controller
 
+import com.rison.iceberg.spark.dataworks.controller.DwdIcebergController.logInfo
 import com.rison.iceberg.spark.dataworks.service.DwsIcebergService
 import org.apache.spark.SparkConf
+import org.apache.spark.internal.Logging
 import org.apache.spark.sql.SparkSession
 
-object DwsIcebergController {
+object DwsIcebergController extends Logging{
   def main(args: Array[String]): Unit = {
     val sparkConf = new SparkConf()
       .set("spark.sql.adaptive.enabled", "true")
@@ -23,7 +25,9 @@ object DwsIcebergController {
       //      .setMaster("local[*]")
       .setAppName("ods_app")
     val sparkSession = SparkSession.builder().config(sparkConf).getOrCreate()
+    logInfo(s"==== dwd -> dws start... =====")
     DwsIcebergService.insertDwsMemberData(sparkSession, "20190722");
+    logInfo(s"==== dwd -> dws start... =====")
     sparkSession.close()
   }
 }

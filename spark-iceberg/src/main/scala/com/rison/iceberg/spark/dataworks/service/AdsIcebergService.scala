@@ -30,35 +30,27 @@ object AdsIcebergService {
          |dt,
          |dn
          |from spark_catalog.rison_iceberg_db.dws_member
-         |whert dt = '$dt'
+         |where dt = '$dt'
          |""".stripMargin
     val result: Dataset[QueryResult] = DwsIcebergDao.queryData(spark, sql).as[QueryResult]
     result.cache()
 
     //统计url统计人数
-    result.mapPartitions(
-      partition => {
-        partition.map(
-          item => {
-            (item.appregurl + "_" + item.dn + "_" + item.dt, 1)
-          }
-        )
-      }
-    ).groupByKey(_._1)
-      .mapValues(item => item._2)
-      .reduceGroups(_ + _)
-      .map(
-        item => {
-          val keys = item._1.split("_")
-          val url = keys(0)
-          val dn = keys(1)
-          val dt = keys(3)
-          (url, item._2, dt, dn)
-        }
-      )
-      .toDF("appregurl", "num", "dt", "dn")
-      .writeTo("spark_catalog.rison_iceberg_db.ads_register_appregurlnum")
-      .overwritePartitions()
+    val frame: DataFrame = result.mapPartitions(partition => {
+      partition.map(item => (item.appregurl + "_" + item.dn + "_" + item.dt, 1))
+    }).groupByKey(_._1)
+      .mapValues(item => item._2).reduceGroups(_ + _)
+      .map(item => {
+        val keys = item._1.split("_")
+        val appregurl = keys(0)
+        val dn = keys(1)
+        val dt = keys(2)
+        (appregurl, item._2, dt, dn)
+      }).toDF("appregurl", "num", "dt", "dn")
+    frame.show(10)
+    frame
+      .writeTo("spark_catalog.rison_iceberg_db.ads_register_appregurlnum").overwritePartitions()
+    spark.sql("select * from spark_catalog.rison_iceberg_db.ads_register_appregurlnum")
 
     //统计等级， 支付前三的用户
     import org.apache.spark.sql.functions._
@@ -85,8 +77,8 @@ object AdsIcebergService {
         "dt",
         "dn"
       )
-      .writeTo("spark_catalog.rison_iceberg_db.ads_register_top3memberpay")
-      .overwritePartitions()
+      .writeTo("spark_catalog.rison_iceberg_db.ads_register_top3memberpay").overwritePartitions()
+    spark.sql("select * from spark_catalog.rison_iceberg_db.ads_register_top3memberpay").show(10)
 
   }
 }

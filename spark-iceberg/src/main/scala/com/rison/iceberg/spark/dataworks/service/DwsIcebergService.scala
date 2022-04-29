@@ -16,11 +16,17 @@ object DwsIcebergService {
   def insertDwsMemberData(spark: SparkSession, dt: String) = {
     import spark.implicits._
     val dwdPCenterMemPayMoney = DwdIcebergService.getDwdPcentermempaymoney(spark).where($"dt" === dt)
+    dwdPCenterMemPayMoney.show(10)
     val dwdVipLevel = DwdIcebergService.getDwdVipLevel(spark)
+    dwdVipLevel.show(10)
     val dwdMember = DwdIcebergService.getDwdMember(spark).where($"dt" === dt)
+    dwdMember.show(10)
     val dwdBaseWebsite = DwdIcebergService.getDwdBaseWebsite(spark)
+    dwdBaseWebsite.show(10)
     val dwdMemberRegtype = DwdIcebergService.getDwdMemberRegtyp(spark).where($"dt" === dt)
+    dwdMemberRegtype.show(10)
     val dwdBaseAd = DwdIcebergService.getDwdBaseAd(spark)
+    dwdBaseAd.show(10)
     val result = dwdMember.join(dwdMemberRegtype.drop("dt"), Seq("uid"), "left")
       .join(dwdPCenterMemPayMoney.drop("dt"), Seq("uid"), "left")
       .join(dwdBaseAd, Seq("ad_id", "dn"), "left")
@@ -32,6 +38,7 @@ object DwsIcebergService {
         , "siteid", "sitename", "siteurl", "site_delete", "site_createtime", "site_creator", "vip_id", "vip_level",
         "vip_start_time", "vip_end_time", "vip_last_modify_time", "vip_max_free", "vip_min_free", "vip_next_level"
         , "vip_operator", "dt", "dn").as[DwsMember]
+    result.show(10)
 
     val value: Dataset[DwsMember_Result] = result.groupByKey(item => item.uid + "_" + item.dn)
       .mapGroups { case (key, iters) =>
@@ -89,7 +96,11 @@ object DwsIcebergService {
           Timestamp.valueOf(vip_start_timeStr), Timestamp.valueOf(vip_end_timeStr), Timestamp.valueOf(vip_last_modify_timeStr), vip_max_free, vip_min_free,
           vip_next_level, vip_operator, dt, dn)
       }
-    value.write.format("iceberg").mode("overwrite").save("spark_catalog.rison_iceberg.dws_member")
+    value.createOrReplaceTempView("value_table")
+
+//    value.writeTo("spark_catalog.rison_iceberg_db.dws_member").overwritePartitions()
+    spark.sql("insert overwrite spark_catalog.rison_iceberg_db.dws_member select * from value_table ")
+    spark.sql("select * from spark_catalog.rison_iceberg_db.dws_member limit 100").show(10)
   }
 
 }

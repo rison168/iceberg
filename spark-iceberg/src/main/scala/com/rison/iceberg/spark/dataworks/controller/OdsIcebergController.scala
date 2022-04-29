@@ -12,7 +12,7 @@ object OdsIcebergController extends Logging{
       .set("spark.sql.adaptive.enabled", "true")
       .set("spark.sql.catalog.local", "org.apache.iceberg.spark.SparkCatalog")
       .set("spark.sql.catalog.local.type", "hadoop")
-      .set("spark.sql.catalog.local.warehouse", "hdfs://apps/hive/warehouse")
+      .set("spark.sql.catalog.local.warehouse", "hdfs:///apps/hive/warehouse")
       .set("spark.sql.catalog.spark_catalog", "org.apache.iceberg.spark.SparkSessionCatalog")
       .set("spark.sql.catalog.spark_catalog.type", "hive")
       .set("spark.sql.catalog.spark_catalog.uri", "thrift://tbds-172-16-16-41:9083")
